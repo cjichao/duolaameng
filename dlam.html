@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<style type="text/css">
+			* {
+				margin: 0;
+				padding: 0;
+			}
+
+			#app {
+				width: 800px;
+				height: 600px;
+				position: absolute;
+				left: 0;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+
+			button {
+				width: 80px;
+				height: 30px;
+				background-color: transparent;
+				border: 1px solid deepskyblue;
+				border-radius: 4px;
+				cursor: pointer;
+				outline: none;
+				color: #fff;
+				background-color: skyblue;
+			}
+
+			button:active {
+				background-color: darkcyan;
+			}
+		</style>
+
+		<script type="text/javascript">
+		</script>
+	</head>
+	<body>
+		<div id='app'>
+			<canvas id='canvas' width="800" height='600' style="border: 1px solid red;"></canvas>
+			<button id='start'>开始</button>
+			<button id='clear'>清空</button>
+			<button id='color'>上色</button>
+		</div>
+		<script src="js/circle.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/ellipse.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/line.js" type="text/javascript" charset="utf-8"></script>
+		<script src="config.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript">
+			(function() {
+				var fps = 1000 / 60;
+				var fps = 1;
+				var pause = true;
+				var interId = null;
+				var i = 0;
+				var isFinish = false;
+
+				var btStart = document.getElementById('start');
+				var btClear = document.getElementById('clear');
+				var btColor = document.getElementById('color');
+				var face = [
+					head, leftEye, yzz1, rightEye, yzz2,
+					face1, face2, nose, line, mouth,
+					hzl1, hzl2, hzl3, hzr1, hzr2,
+					hzr3, neckL, neck, neckR, neck2
+				];
+
+				btStart.onclick = function() {
+					pause = !pause;
+					if (!pause) {
+						interId = setInterval(function() {
+							if (i >= face.length) {
+								isFinish = true;
+								return clearInterval(interId);
+							}
+							if (face[i].update()) {
+								i++;
+								return;
+							}
+							face[i].draw(ctx);
+						}, fps);
+						this.innerText = '暂停';
+					} else {
+						this.innerText = '开始';
+						return clearInterval(interId);
+					}
+
+				}
+
+				btClear.onclick = function() {
+					face.forEach(function(item) {
+						item.init();
+					});
+					i = 0;
+					clearInterval(interId);
+					interId = null;
+					pause = true;
+					ctx.clearRect(0, 0, 800, 600);
+				}
+
+				btColor.onclick = function() {
+					if (isFinish) {
+						// 头
+						ctx.beginPath();
+						ctx.fillStyle = 'skyblue';
+						ctx.arc(cx, cy, 99, 28 * Math.PI / 36, 8 * Math.PI / 36)
+						ctx.fill();
+						ctx.closePath();
+
+						//脸
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx, cy + 20, 80, 65, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+
+						// 眼睛
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx - 20, cy - 40, 20, 25, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx + 20, cy - 40, 20, 25, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+
+						//眼珠
+						ctx.beginPath();
+						ctx.fillStyle = 'black';
+						ctx.arc(cx - 15, cy - 30, 4, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+
+						ctx.beginPath();
+						ctx.fillStyle = 'black';
+						ctx.arc(cx + 15, cy - 30, 4, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+
+						// 鼻子
+						ctx.beginPath();
+						ctx.fillStyle = 'red';
+						ctx.arc(cx, cy - 12, 10, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+
+						// 脖子
+						ctx.beginPath();
+						ctx.fillStyle = 'red';
+						ctx.fillRect(cx - 80, cy + 65, 160, 10);
+						ctx.closePath();
+						
+						face.forEach(function(item) {
+							item.drawImmediately(ctx);
+						});
+					}
+					
+				}
+			})();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>哆啦A梦</title>
+		<style type="text/css">
+			* {
+				margin: 0;
+				padding: 0;
+			}
+
+			#app {
+				width: 800px;
+				height: 600px;
+				position: absolute;
+				left: 0;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				margin: auto;
+			}
+			button {
+				width: 80px;
+				height: 30px;
+				background-color: transparent;
+				border: 1px solid deepskyblue;
+				border-radius: 4px;
+				cursor: pointer;
+				outline: none;
+				color: #fff;
+				background-color: skyblue;
+			}
+			
+			button:active {
+				background-color: darkcyan;
+			}
+		</style>
+	</head>
+	<body>
+		<div id='app'>
+			<canvas id='canvas' width="800" height='600' style="border: 1px solid red;"></canvas>
+			<button id='start'>开始</button>
+			<button id='clear'>清空</button>
+			<button id='color'>上色</button>
+		</div>
+		<script type="text/javascript">
+			class Circle {
+				constructor(args) {
+					this.cx = args.cx || 0;
+					this.cy = args.cy || 0;
+					this.r = args.r || 100;
+					this.startAngle = args.startAngle || 0;
+					this.endAngle = args.endAngle == 0 ? 0 : (args.endAngle || 360);
+					this.color = args.color || '#000000';
+					this.callback = function() {
+						args.callback && args.callback();
+					}
+					this.anticlockwise = !!args.anticlockwise; //逆时针,默认顺时针
+					this.posArr = [];
+					this.init();
+				}
+				init() {
+					this.end = false;
+					this.now = 0;
+					var posArr = this.posArr = [];
+					this.nowPos = [];
+					if (this.startAngle < this.endAngle) {
+						for (var angle = this.startAngle; angle <= this.endAngle; angle++) {
+							posArr.push(this.position(angle, this.r, this.cx, this.cy));
+						}
+					} else {
+						for (var angle = this.endAngle; angle <= this.startAngle; angle++) {
+							posArr.push(this.position(angle, this.r, this.cx, this.cy));
+						}
+					}
+				}
+				drawImmediately(ctx) {
+					var posArr = this.posArr;
+					for (var i = 0; i < posArr.length - 1; i++) {
+						ctx.beginPath();
+						ctx.strokeStyle = this.color;
+						ctx.moveTo(posArr[i][0], posArr[i][1]);
+						ctx.lineTo(posArr[i + 1][0], posArr[i + 1][1]);
+						ctx.stroke();
+						ctx.closePath();
+					}
+				}
+				update() {
+					if (this.now >= this.posArr.length - 1 && !this.end) {
+						this.callback();
+						this.end = true;
+						return true;
+					}
+					if (!this.end) {
+						this.nowPos = [this.posArr[this.now++], this.posArr[this.now]];
+					}
+
+				}
+				draw(ctx) {
+					try {
+						var nowPos = this.nowPos;
+						if (nowPos.length >= 2) {
+							ctx.beginPath();
+							ctx.strokeStyle = this.color;
+							ctx.moveTo(nowPos[0][0], nowPos[0][1]);
+							ctx.lineTo(nowPos[1][0], nowPos[1][1]);
+							ctx.stroke();
+							ctx.closePath();
+						}
+					} catch (e) {
+						console.log(this.nowPos)
+					}
+				}
+				position(angle, r, cx, cy) {
+					var sin = this.sin;
+					angle = angle % 360;
+					if (!this.anticlockwise) {
+						if (angle < 90) {
+							return [(cx + sin(angle) * r).toFixed(2), (cy - sin(90 - angle) * r).toFixed(2)];
+						} else if (angle < 180) {
+							return [(cx + sin(angle) * r).toFixed(2), (cy + sin(angle - 90) * r).toFixed(2)];
+						} else if (angle < 270) {
+							return [(cx - sin(angle - 180) * r).toFixed(2), (cy + sin(90 - angle + 180) * r).toFixed(2)];
+						} else if (angle <= 360) {
+							return [(cx - sin(90 - angle + 270) * r).toFixed(2), (cy - sin(angle - 270) * r).toFixed(2)];
+						}
+					} else {
+						if (angle < 90) {
+							return [(cx + sin(angle) * r).toFixed(2), (cy + sin(90 - angle) * r).toFixed(2)];
+						} else if (angle < 180) {
+							return [(cx + sin(angle) * r).toFixed(2), (cy - sin(angle - 90) * r).toFixed(2)];
+						} else if (angle < 270) {
+							return [(cx - sin(angle - 180) * r).toFixed(2), (cy - sin(90 - angle + 180) * r).toFixed(2)];
+						} else if (angle <= 360) {
+							return [(cx - sin(90 - angle + 270) * r).toFixed(2), (cy + sin(angle - 270) * r).toFixed(2)];
+						}
+					}
+				}
+				sin(v) {
+					return Math.sin(Math.PI / (180 / v));
+				}
+			}
+			/**
+			 * 椭圆
+			 */
+
+			class Ellipse {
+				constructor(args) {
+					this.x = args.x || 0;
+					this.y = args.y || 0;
+					this.a = args.a;
+					this.b = args.b;
+					this.color = args.color || '#000000';
+					this.callback = function() {
+						args.callback && args.callback();
+					}
+					this.startAngle = args.startAngle || 0;
+					this.endAngle = args.endAngle || 360;
+					this.anticlockwise = !!args.anticlockwise; //逆时针
+					this.pos = [];
+					this.now = 0;
+					this.nowPos = [];
+					this.init();
+				}
+
+				init() {
+					this.end = false;
+					this.now = 0;
+					var x = this.x;
+					var y = this.y;
+					var a = this.a;
+					var b = this.b;
+					var pos = this.pos = [];
+					this.nowPos = [];
+					for (var angle = this.startAngle; angle <= this.endAngle; angle++) {
+						pos.push(this.position(x, y, a, b, angle));
+					}
+				}
+				drawImmediately(ctx) {
+					var pos = this.pos;
+					for (var i = 0; i < pos.length - 1; i++) {
+						ctx.beginPath();
+						ctx.strokeStyle = this.color;
+						ctx.moveTo(pos[i][0].toFixed(2), pos[i][1].toFixed(2));
+						ctx.lineTo(pos[i + 1][0].toFixed(2), pos[i + 1][1].toFixed(2));
+						ctx.stroke();
+						ctx.closePath();
+					}
+				}
+				update() {
+					if (this.now >= this.pos.length - 1 && !this.end) {
+						this.callback();
+						this.end = true;
+						return true;
+					}
+					if (!this.end) {
+						this.nowPos = [this.pos[this.now++], this.pos[this.now]];
+					}
+
+				}
+				draw(ctx) {
+					if (this.now >= this.pos.length - 1) return;
+					ctx.beginPath();
+					ctx.strokeStyle = this.color;
+					ctx.moveTo(this.nowPos[0][0].toFixed(2), this.nowPos[0][1].toFixed(2));
+					ctx.lineTo(this.nowPos[1][0].toFixed(2), this.nowPos[1][1].toFixed(2));
+					ctx.stroke();
+					ctx.closePath();
+				}
+				position(x, y, a, b, angle) {
+					var tan = this.tan;
+					var angle = angle % 360;
+					var posX;
+					var posY;
+					if (!this.anticlockwise) {
+						if (angle === 0) {
+							return [x, y - b];
+						} else if (angle < 90) {
+							posX = a * b * tan(angle) / (Math.sqrt(b * b * tan(angle) * tan(angle) + a * a));
+							posY = a * b / (Math.sqrt(b * b * tan(angle) * tan(angle) + a * a));
+							return [x + posX, y - posY];
+						} else if (angle === 90) {
+							return [x + a, y];
+						} else if (angle < 180) {
+							posX = a * b / (Math.sqrt(b * b + a * a * tan(angle - 90) * tan(angle - 90)));
+							posY = a * b * tan(angle - 90) / (Math.sqrt(b * b + a * a * tan(angle - 90) * tan(angle - 90)));
+							return [x + posX, y + posY];
+						} else if (angle === 180) {
+							return [x, y + b];
+						} else if (angle < 270) {
+							posX = a * b * tan(angle - 180) / (Math.sqrt(b * b * tan(angle - 180) * tan(angle - 180) + a *
+								a));
+							posY = a * b / (Math.sqrt(b * b * tan(angle - 180) * tan(angle - 180) + a * a));
+							return [x - posX, y + posY];
+						} else if (angle === 270) {
+							return [x - a, y];
+						} else if (angle < 360) {
+							posX = a * b / (Math.sqrt(b * b + a * a * tan(angle - 270) * tan(angle - 270)));
+							posY = a * b * tan(angle - 270) / (Math.sqrt(b * b + a * a * tan(angle - 270) * tan(angle -
+								270)));
+							return [x - posX, y - posY];
+						}
+					} else {
+						if (angle === 0) {
+							return [x, y + b];
+						} else if (angle < 90) {
+							posX = a * b * tan(angle) / (Math.sqrt(b * b * tan(angle) * tan(angle) + a * a));
+							posY = a * b / (Math.sqrt(b * b * tan(angle) * tan(angle) + a * a));
+							return [x + posX, y + posY];
+						} else if (angle === 90) {
+							return [x + a, y];
+						} else if (angle < 180) {
+							posX = a * b / (Math.sqrt(b * b + a * a * tan(angle - 90) * tan(angle - 90)));
+							posY = a * b * tan(angle - 90) / (Math.sqrt(b * b + a * a * tan(angle - 90) * tan(angle - 90)));
+							return [x + posX, y - posY];
+						} else if (angle === 180) {
+							return [x, y - b];
+						} else if (angle < 270) {
+							posX = a * b * tan(angle - 180) / (Math.sqrt(b * b * tan(angle - 180) * tan(angle - 180) + a *
+								a));
+							posY = a * b / (Math.sqrt(b * b * tan(angle - 180) * tan(angle - 180) + a * a));
+							return [x - posX, y - posY];
+						} else if (angle === 270) {
+							return [x - a, y];
+						} else if (angle < 360) {
+							posX = a * b / (Math.sqrt(b * b + a * a * tan(angle - 270) * tan(angle - 270)));
+							posY = a * b * tan(angle - 270) / (Math.sqrt(b * b + a * a * tan(angle - 270) * tan(angle -
+								270)));
+							return [x - posX, y + posY];
+						}
+					}
+
+				}
+				tan(v) {
+					return Math.tan(Math.PI / (180 / v));
+				}
+			}
+			class Line {
+				constructor(args) {
+					this.x = args.x;
+					this.y = args.y;
+					this.k = args.k || 1;
+					this.b = args.b || 0;
+					this.x1 = args.x1 || 0;
+					this.y1 = args.y1 || 0;
+					this.x2 = args.x2 || 0;
+					this.y2 = args.y2 || 0;
+					this.color = args.color || '#000000';
+					this.callback = function() {
+						args.callback && args.callback();
+					}
+					this.pos = [];
+					this.nowPos = [];
+					this.now = 0;
+					this.init();
+				}
+				init() {
+					this.end = false;
+					this.now = 0;
+					this.nowPos = [];
+					var pos = this.pos = [];
+					if (this.x) {
+						var min = Math.min(this.y1, this.y2);
+						var max = Math.max(this.y1, this.y2);
+						this.posy = min;
+						this.range = Math.abs(this.y1 - this.y2);
+						for (; this.posy <= max; this.posy++) {
+							pos.push(this.position(this.posy));
+						}
+					} else if (this.y) {
+						var min = Math.min(this.x1, this.x2);
+						var max = Math.max(this.x1, this.x2);
+						this.posx = min;
+						this.range = Math.abs(this.x1 - this.x2);
+						for (; this.posx <= max; this.posx++) {
+							pos.push(this.position(this.posx));
+						}
+					} else {
+						this.posx = this.x1;
+						this.range = Math.abs(this.x1 - this.x2);
+						for (; this.posx <= this.x2; this.posx++) {
+							pos.push(this.position(this.posx));
+						}
+					}
+
+				}
+				update() {
+					if (this.now > this.range - 1 && !this.end) {
+						this.callback();
+						this.end = true;
+						return true;
+					}
+					if (!this.end) {
+						this.nowPos = [this.pos[this.now++], this.pos[this.now]];
+					}
+
+				}
+				drawImmediately(ctx) {
+					var pos = this.pos;
+					for (var i = 0; i < pos.length - 1; i++) {
+						ctx.beginPath();
+						ctx.strokeStyle = this.color;
+						ctx.moveTo(pos[i][0].toFixed(2), pos[i][1].toFixed(2));
+						ctx.lineTo(pos[i + 1][0].toFixed(2), pos[i + 1][1].toFixed(2));
+						ctx.stroke();
+						ctx.closePath();
+					}
+				}
+				draw(ctx) {
+					ctx.beginPath();
+					ctx.strokeStyle = this.color;
+					ctx.moveTo(this.nowPos[0][0].toFixed(2), this.nowPos[0][1].toFixed(2));
+					ctx.lineTo(this.nowPos[1][0].toFixed(2), this.nowPos[1][1].toFixed(2));
+					ctx.stroke();
+					ctx.closePath();
+				}
+				position(x) {
+					if (this.x) {
+						return [this.x, x];
+					} else if (this.y) {
+						return [x, this.y];
+					} else {
+						var y = this.k * x + this.b
+						return [x, y];
+					}
+
+				}
+			}
+		</script>
+		<script type="text/javascript">
+			var cx = 400;
+			var cy = 200;
+			var cv = document.getElementById('canvas');
+			var ctx = cv.getContext('2d');
+
+			var head = new Circle({
+				cx: cx,
+				cy: cy,
+				r: 100,
+				startAngle: 310,
+				endAngle: 50,
+				anticlockwise: true,
+				// color: 'skyblue'
+			});
+
+			var mouth = new Circle({
+				cx: cx,
+				cy: cy + 10,
+				r: 50,
+				startAngle: 120,
+				endAngle: 240,
+				// color: 'skyblue'
+			});
+			// 眼睛
+			var leftEye = new Ellipse({
+				x: cx - 20,
+				y: cy - 40,
+				a: 20,
+				b: 25,
+				// color: 'skyblue'
+			});
+			var rightEye = new Ellipse({
+				x: cx + 20,
+				y: cy - 40,
+				a: 20,
+				b: 25,
+				// color: 'skyblue'
+			});
+
+			//眼珠子
+			var yzz1 = new Circle({
+				cx: cx - 15,
+				cy: cy - 30,
+				r: 5,
+				// color: 'skyblue'
+			});
+			var yzz2 = new Circle({
+				cx: cx + 15,
+				cy: cy - 30,
+				r: 5,
+				// color: 'skyblue'
+			});
+
+			// 脸：要分2段
+			var face1 = new Ellipse({
+				x: cx,
+				y: cy + 20,
+				a: 80,
+				b: 65,
+				startAngle: 51,
+				endAngle: 145,
+				anticlockwise: true,
+				// color: 'skyblue'
+			});
+			var face2 = new Ellipse({
+				x: cx,
+				y: cy + 20,
+				a: 80,
+				b: 65,
+				startAngle: 215,
+				endAngle: 310,
+				anticlockwise: true,
+				// color: 'skyblue'
+			});
+
+			var nose = new Circle({
+				cx: cx,
+				cy: cy - 12,
+				r: 10,
+				color: 'red'
+			});
+
+			var line = new Line({
+				y1: 198,
+				y2: 260,
+				x: cx,
+				// k: 0,
+				// b: 200
+			});
+			// 胡子左边1
+			var hzl1 = new Line({
+				x1: 340,
+				y1: 198,
+				x2: 380,
+				y2: 260,
+				k: 0.4,
+				b: 50
+			});
+			var hzl2 = new Line({
+				x1: 340,
+				x2: 380,
+				y: 210,
+			});
+			var hzl3 = new Line({
+				x1: 340,
+				y1: 0,
+				x2: 380,
+				y2: 260,
+				k: -0.4,
+				b: 370
+			});
+
+			// 胡子右边1
+			var hzr1 = new Line({
+				x1: 420,
+				y1: 0,
+				x2: 460,
+				y2: 260,
+				k: -0.4,
+				b: 370
+			});
+			var hzr2 = new Line({
+				x1: 420,
+				x2: 460,
+				y: 210,
+			});
+			var hzr3 = new Line({
+				x1: 420,
+				y1: 0,
+				x2: 460,
+				y2: 260,
+				k: 0.4,
+				b: 50
+			});
+			// 脖子
+			var neck = new Line({
+				x1: cx - 80,
+				x2: cx + 80,
+				y: cy + 65,
+			});
+			var neckR = new Circle({
+				cx: cx + 71,
+				cy: cy + 69,
+				r: 10,
+				startAngle: 60,
+				endAngle: 120,
+				anticlockwise: !true
+			});
+			var neck2 = new Line({
+				x1: cx - 80,
+				x2: cx + 80,
+				y: cy + 75,
+			});
+			var neckL = new Circle({
+				cx: cx - 71,
+				cy: cy + 69,
+				r: 10,
+				startAngle: 240,
+				endAngle: 300,
+				anticlockwise: true
+			});
+
+			(function() {
+				var fps = 1000 / 60;
+				var fps = 1;
+				var pause = true;
+				var interId = null;
+				var i = 0;
+				var isFinish = false;
+			
+				var btStart = document.getElementById('start');
+				var btClear = document.getElementById('clear');
+				var btColor = document.getElementById('color');
+				var face = [
+					head, leftEye, yzz1, rightEye, yzz2,
+					face1, face2, nose, line, mouth,
+					hzl1, hzl2, hzl3, hzr1, hzr2,
+					hzr3, neckL, neck, neckR, neck2
+				];
+			
+				btStart.onclick = function() {
+					pause = !pause;
+					if (!pause) {
+						interId = setInterval(function() {
+							if (i >= face.length) {
+								isFinish = true;
+								return clearInterval(interId);
+							}
+							if (face[i].update()) {
+								i++;
+								return;
+							}
+							face[i].draw(ctx);
+						}, fps);
+						this.innerText = '暂停';
+					} else {
+						this.innerText = '开始';
+						return clearInterval(interId);
+					}
+			
+				}
+			
+				btClear.onclick = function() {
+					face.forEach(function(item) {
+						item.init();
+					});
+					i = 0;
+					clearInterval(interId);
+					interId = null;
+					pause = true;
+					ctx.clearRect(0, 0, 800, 600);
+				}
+			
+				btColor.onclick = function() {
+					if (isFinish) {
+						// 头
+						ctx.beginPath();
+						ctx.fillStyle = 'skyblue';
+						ctx.arc(cx, cy, 99, 28 * Math.PI / 36, 8 * Math.PI / 36)
+						ctx.fill();
+						ctx.closePath();
+			
+						//脸
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx, cy + 20, 80, 65, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+			
+						// 眼睛
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx - 20, cy - 40, 20, 25, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+			
+						ctx.beginPath();
+						ctx.fillStyle = '#fff';
+						ctx.ellipse(cx + 20, cy - 40, 20, 25, 0, 0, Math.PI * 2);
+						ctx.fill();
+						ctx.closePath();
+			
+						//眼珠
+						ctx.beginPath();
+						ctx.fillStyle = 'black';
+						ctx.arc(cx - 15, cy - 30, 4, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+			
+						ctx.beginPath();
+						ctx.fillStyle = 'black';
+						ctx.arc(cx + 15, cy - 30, 4, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+			
+						// 鼻子
+						ctx.beginPath();
+						ctx.fillStyle = 'red';
+						ctx.arc(cx, cy - 12, 10, 0, 2 * Math.PI)
+						ctx.fill();
+						ctx.closePath();
+			
+						// 脖子
+						ctx.beginPath();
+						ctx.fillStyle = 'red';
+						ctx.fillRect(cx - 80, cy + 65, 160, 10);
+						ctx.closePath();
+						
+						face.forEach(function(item) {
+							item.drawImmediately(ctx);
+						});
+					}
+					
+				}
+			})();
+		</script>
+	</body>
+</html>
